@@ -2,41 +2,49 @@ const { MongoClient, ServerApiVersion } = require("mongodb");
 
 const uri = process.env.MONGODB_URI;
 
-console.log("Mongo URI:", uri);
-
 if (!uri) {
-  throw new Error("MONGODB_URI is not defined in .env file");
+  console.error("❌ MONGODB_URI is missing");
+  throw new Error("MONGODB_URI is missing");
 }
 
-const client = new MongoClient(uri, {
-  serverApi: {
-    version: ServerApiVersion.v1,
-    strict: true,
-    deprecationErrors: true,
-  },
-});
-
-let database;
-let jobsCollection;
-let tasksCollection;
+// 🔁 Cache for serverless
+let cachedClient = null;
+let cachedDb = null;
 
 const connectDB = async () => {
-  try {
-    await client.connect(); // ✅ NO argument
-    database = client.db("Nexira-db");
+  // ✅ reuse existing connection
+  if (cachedDb) return cachedDb;
 
-    jobsCollection = database.collection("all_jobs");
-    tasksCollection = database.collection("added_tasks");
+  const client = new MongoClient(uri, {
+    serverApi: {
+      version: ServerApiVersion.v1,
+      strict: true,
+      deprecationErrors: true,
+    },
+  });
 
-    console.log("MongoDB connected successfully");
-  } catch (err) {
-    console.error("MongoDB connection failed:", err);
-    throw err;
-  }
+  await client.connect();
+
+  const db = client.db(); // DB name comes from URI
+
+  cachedClient = client;
+  cachedDb = db;
+
+  console.log("✅ MongoDB connected (serverless)");
+
+  return db;
 };
 
-const getJobsCollection = () => jobsCollection;
-const getTasksCollection = () => tasksCollection;
+// helpers (optional)
+const getJobsCollection = async () => {
+  const db = await connectDB();
+  return db.collection("all_jobs");
+};
+
+const getTasksCollection = async () => {
+  const db = await connectDB();
+  return db.collection("added_tasks");
+};
 
 module.exports = {
   connectDB,

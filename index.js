@@ -6,7 +6,6 @@ const dns = require("dns");
 
 dns.setDefaultResultOrder("ipv4first");
 
-
 const { connectDB } = require("./db.js");
 
 const jobRouter = require("./routes/jobRouter");

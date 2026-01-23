@@ -12,6 +12,7 @@
   "author": "",
   "license": "ISC",
   "type": "commonjs",
+  "description": "A RESTful API backend for a job management platform built with Node.js, Express,\r MongoDB, and Firebase Authentication.",
   "dependencies": {
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",

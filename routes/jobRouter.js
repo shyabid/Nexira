@@ -12,10 +12,12 @@ const jobRouter = express.Router();
 
 // public
 jobRouter.get("/", getJobs);
-jobRouter.get("/:id", getJobById);
 
-// protected
+// protected (STATIC routes first)
 jobRouter.get("/user", verifyTokenId, getUserJobs);
 jobRouter.post("/", verifyTokenId, postJob);
+
+// dynamic route LAST
+jobRouter.get("/:id", getJobById);
 
 module.exports = jobRouter;

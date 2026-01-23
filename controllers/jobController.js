@@ -2,9 +2,9 @@ const { ObjectId } = require("mongodb");
 const { getJobsCollection } = require("../db");
 
 const getJobs = async (req, res) => {
-  const jobsCollection = getJobsCollection();
-
   try {
+    const jobsCollection = await getJobsCollection();
+
     let query = {};
     let sortObj = {};
     let projectField = {};
@@ -91,17 +91,18 @@ const getJobs = async (req, res) => {
 };
 
 const getUserJobs = async (req, res) => {
-  const jobsCollection = getJobsCollection();
-  const email = req.query.email;
-
-  if (email !== req.token_email) {
-    return res.status(403).json({ message: "Forbidden Access" });
-  }
-
   try {
+    const jobsCollection = await getJobsCollection();
+    const email = req.query.email;
+
+    if (email !== req.token_email) {
+      return res.status(403).json({ message: "Forbidden Access" });
+    }
+
     const result = await jobsCollection
       .find({ creator_email: email })
       .toArray();
+
     res.json({ success: true, user_jobs: result });
   } catch (error) {
     console.error("getUserJobs error:", error);
@@ -110,14 +111,14 @@ const getUserJobs = async (req, res) => {
 };
 
 const postJob = async (req, res) => {
-  const jobsCollection = getJobsCollection();
-  const newJob = {
-    ...req.body,
-    created_at: new Date(),
-    status: "pending",
-  };
-
   try {
+    const jobsCollection = await getJobsCollection();
+    const newJob = {
+      ...req.body,
+      created_at: new Date(),
+      status: "pending",
+    };
+
     const result = await jobsCollection.insertOne(newJob);
     res.status(201).json({ success: true, insertedId: result.insertedId });
   } catch (error) {
@@ -127,14 +128,14 @@ const postJob = async (req, res) => {
 };
 
 const getJobById = async (req, res) => {
-  const jobsCollection = getJobsCollection();
-  const { id } = req.params;
-
-  if (!ObjectId.isValid(id)) {
-    return res.status(400).json({ message: "Invalid job id" });
-  }
-
   try {
+    const jobsCollection = await getJobsCollection();
+    const { id } = req.params;
+
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid job id" });
+    }
+
     const job = await jobsCollection.findOne({ _id: new ObjectId(id) });
     res.json({ success: true, job });
   } catch (error) {

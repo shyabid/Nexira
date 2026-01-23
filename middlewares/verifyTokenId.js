@@ -1,7 +1,10 @@
 const admin = require("firebase-admin");
 
-// initialize firebase only once
 if (!admin.apps.length) {
+  if (!process.env.FIREBASE_SERVICE_KEY) {
+    throw new Error("FIREBASE_SERVICE_KEY is missing");
+  }
+
   const decoded = Buffer.from(
     process.env.FIREBASE_SERVICE_KEY,
     "base64",

@@ -1,10 +1,14 @@
 const { ObjectId } = require("mongodb");
 const { tasksCollection } = require("../db.js");
 
+// ================= POST TASK =================
 const postTask = async (req, res) => {
-  const newTask = req.body;
-
   try {
+    const newTask = {
+      ...req.body,
+      created_at: new Date(), // ✅ date safe
+    };
+
     const result = await tasksCollection.insertOne(newTask);
 
     res.send({
@@ -12,7 +16,8 @@ const postTask = async (req, res) => {
       message: "Task posted successfully",
       ...result,
     });
-  } catch {
+  } catch (error) {
+    console.error("postTask error:", error);
     res.status(500).send({
       success: false,
       message: "Task post failed",
@@ -20,53 +25,77 @@ const postTask = async (req, res) => {
   }
 };
 
+// ================= GET USER TASKS =================
 const getUserTasks = async (req, res) => {
-  const { email } = req.query;
-  const pipeline = [
-    {
-      $match: {
-        accepted_user_email: email,
+  try {
+    const { email } = req.query;
+
+    // 🔐 Auth safety (frontend break করবে না)
+    if (!email || email !== req.token_email) {
+      return res.status(403).send({
+        success: false,
+        message: "Forbidden Access",
+      });
+    }
+
+    const pipeline = [
+      {
+        $match: {
+          accepted_user_email: email,
+        },
       },
-    },
-    {
-      $addFields: {
-        jobObjId: {
-          $convert: {
-            input: "$job_id",
-            to: "objectId",
+      {
+        // 🛡️ Safe ObjectId conversion (crash fix)
+        $addFields: {
+          jobObjId: {
+            $cond: [
+              { $eq: [{ $type: "$job_id" }, "objectId"] },
+              "$job_id",
+              {
+                $convert: {
+                  input: "$job_id",
+                  to: "objectId",
+                  onError: null,
+                  onNull: null,
+                },
+              },
+            ],
           },
         },
       },
-    },
-    {
-      $lookup: {
-        from: "all_jobs",
-        localField: "jobObjId",
-        foreignField: "_id",
-        as: "job_details",
+      {
+        $lookup: {
+          from: "all_jobs",
+          localField: "jobObjId",
+          foreignField: "_id",
+          as: "job_details",
+        },
       },
-    },
-    {
-      $unwind: "$job_details",
-    },
-  ];
+      {
+        // 🛡️ Unwind safe (no crash if missing job)
+        $unwind: {
+          path: "$job_details",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $project: {
+          accepted_user_name: 1,
+          accepted_user_email: 1,
+          job_details: 1,
+        },
+      },
+    ];
 
-  try {
-    const result = await tasksCollection
-      .aggregate(pipeline)
-      .project({
-        accepted_user_name: 1,
-        job_details: 1,
-        accepted_user_email: 1,
-      })
-      .toArray();
+    const result = await tasksCollection.aggregate(pipeline).toArray();
 
     res.send({
       success: true,
       message: "Task jobs data retrieved successfully",
-      user_tasks: result,
+      user_tasks: result || [],
     });
-  } catch {
+  } catch (error) {
+    console.error("getUserTasks error:", error);
     res.status(500).send({
       success: false,
       message: "Task jobs data retrieved failed",
@@ -74,11 +103,20 @@ const getUserTasks = async (req, res) => {
   }
 };
 
+// ================= DELETE TASK =================
 const deleteTaskById = async (req, res) => {
-  const { id } = req.params;
-  const query = { _id: new ObjectId(id) };
-
   try {
+    const { id } = req.params;
+
+    // 🛡️ ObjectId validation (serverless safe)
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).send({
+        success: false,
+        message: "Invalid task id",
+      });
+    }
+
+    const query = { _id: new ObjectId(id) };
     const result = await tasksCollection.deleteOne(query);
 
     res.send({
@@ -86,7 +124,8 @@ const deleteTaskById = async (req, res) => {
       message: "Task deleted successfully",
       ...result,
     });
-  } catch {
+  } catch (error) {
+    console.error("deleteTaskById error:", error);
     res.status(500).send({
       success: false,
       message: "Task delete failed",
@@ -94,4 +133,8 @@ const deleteTaskById = async (req, res) => {
   }
 };
 
-module.exports = { postTask, getUserTasks, deleteTaskById };
+module.exports = {
+  postTask,
+  getUserTasks,
+  deleteTaskById,
+};

@@ -8,19 +8,18 @@ const {
   getUserJobs,
 } = require("../controllers/jobController");
 
-const validateTokenId = require("../middlewares/validateTokenId.js");
 const verifyTokenId = require("../middlewares/verifyTokenId");
 
+const jobRouter = express.Router();
+
+// 🌍 Public routes
 jobRouter.get("/", getJobs);
-
-jobRouter.get("/user", validateTokenId, verifyTokenId, getUserJobs);
-
-jobRouter.post("/", validateTokenId, verifyTokenId, postJob);
-
 jobRouter.get("/:id", getJobById);
 
-jobRouter.put("/:id", validateTokenId, verifyTokenId, updateJobById);
-
-jobRouter.delete("/:id", validateTokenId, verifyTokenId, deleteJobById);
+// 🔐 Protected routes
+jobRouter.get("/user", verifyTokenId, getUserJobs);
+jobRouter.post("/", verifyTokenId, postJob);
+jobRouter.put("/:id", verifyTokenId, updateJobById);
+jobRouter.delete("/:id", verifyTokenId, deleteJobById);
 
 module.exports = jobRouter;

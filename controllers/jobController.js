@@ -24,49 +24,43 @@ const getJobs = async (req, res) => {
       excludes,
     } = req.query;
 
-    // 🔐 Pagination safety
+    // Pagination
     const pageNum = Math.max(1, Number(page) || 1);
     const limitNum = Math.min(100, Math.max(1, Number(limit) || 12));
     const skipNum = (pageNum - 1) * limitNum;
 
-    // 🔃 Sort safety (fallback)
+    // Sorting
     sortObj[sortBy] = sortOrder === "asc" ? 1 : -1;
 
-    // 🔍 Search
+    // Search
     if (search?.trim()) {
-      const searchRegex = { $regex: search.trim(), $options: "i" };
+      const regex = { $regex: search.trim(), $options: "i" };
       query.$or = [
-        { job_title: searchRegex },
-        { job_summary: searchRegex },
-        { posted_by: searchRegex },
+        { job_title: regex },
+        { job_summary: regex },
+        { posted_by: regex },
       ];
     }
 
-    // 🎯 Filters (only if value exists)
+    // Filters
     if (job_category?.trim()) query.job_category = job_category.trim();
     if (job_type?.trim()) query.job_type = job_type.trim();
-    if (location?.trim()) {
-      query.location = { $regex: location.trim(), $options: "i" };
-    }
-    if (experience_level?.trim()) {
+    if (experience_level?.trim())
       query.experience_level = experience_level.trim();
-    }
+    if (location?.trim())
+      query.location = { $regex: location.trim(), $options: "i" };
 
-    // 📦 Projection (fields include)
+    // Projection include
     if (fields?.trim()) {
-      fields.split(",").forEach((f) => {
-        projectField[f.trim()] = 1;
-      });
+      fields.split(",").forEach((f) => (projectField[f.trim()] = 1));
     }
 
-    // 🚫 Projection (fields exclude)
+    // Projection exclude
     if (excludes?.trim()) {
-      excludes.split(",").forEach((f) => {
-        projectField[f.trim()] = 0;
-      });
+      excludes.split(",").forEach((f) => (projectField[f.trim()] = 0));
     }
 
-    // 🛡️ Default projection (frontend safe)
+    // Default projection
     if (!Object.keys(projectField).length) {
       projectField = {
         creator_email: 0,
@@ -87,7 +81,6 @@ const getJobs = async (req, res) => {
       .project(projectField)
       .toArray();
 
-    // ✅ RESPONSE SHAPE UNCHANGED
     res.status(200).json({
       success: true,
       jobs: jobs || [],
@@ -112,7 +105,6 @@ const getUserJobs = async (req, res) => {
     const jobsCollection = await getJobsCollection();
     const email = req.query.email;
 
-    // 🔐 Auth safety
     if (!email || email !== req.token_email) {
       return res.status(403).json({ message: "Forbidden Access" });
     }
@@ -138,7 +130,8 @@ const postJob = async (req, res) => {
 
     const newJob = {
       ...req.body,
-      created_at: new Date(), // ✅ always Date
+      creator_email: req.token_email,
+      created_at: new Date(),
       status: "pending",
     };
 
@@ -178,9 +171,62 @@ const getJobById = async (req, res) => {
   }
 };
 
+// ================= UPDATE JOB =================
+const updateJobById = async (req, res) => {
+  try {
+    const jobsCollection = await getJobsCollection();
+    const { id } = req.params;
+
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid job id" });
+    }
+
+    const updateData = req.body;
+
+    const result = await jobsCollection.updateOne(
+      { _id: new ObjectId(id) },
+      { $set: updateData },
+    );
+
+    res.json({
+      success: true,
+      modifiedCount: result.modifiedCount,
+    });
+  } catch (error) {
+    console.error("updateJobById error:", error);
+    res.status(500).json({ success: false });
+  }
+};
+
+// ================= DELETE JOB =================
+const deleteJobById = async (req, res) => {
+  try {
+    const jobsCollection = await getJobsCollection();
+    const { id } = req.params;
+
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid job id" });
+    }
+
+    const result = await jobsCollection.deleteOne({
+      _id: new ObjectId(id),
+    });
+
+    res.json({
+      success: true,
+      deletedCount: result.deletedCount,
+    });
+  } catch (error) {
+    console.error("deleteJobById error:", error);
+    res.status(500).json({ success: false });
+  }
+};
+
 module.exports = {
   getJobs,
   getUserJobs,
   postJob,
   getJobById,
+  updateJobById,
+  deleteJobById,
 };

@@ -1,12 +1,12 @@
 const express = require("express");
-const { getDashboardStats } = require("../controllers/dashboardController");
 
-const verifyTokenId = require("../middlewares/verifyTokenId");
+const validateTokenId = require("../middlewares/validateTokenId.js");
+const verifyTokenId = require("../middlewares/verifyTokenId.js");
+const { getDashboardStats } = require("../controllers/dashboardController.js");
 
 const dashboardRouter = express.Router();
 
-// protect all dashboard routes
-dashboardRouter.use(verifyTokenId);
+dashboardRouter.use(validateTokenId, verifyTokenId);
 
 dashboardRouter.get("/stats", getDashboardStats);
 

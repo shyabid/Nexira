@@ -1,39 +1,27 @@
 const { ObjectId } = require("mongodb");
-const { getTasksCollection } = require("../db");
+const { tasksCollection } = require("../db.js");
 
 const postTask = async (req, res) => {
-  const tasksCollection = getTasksCollection();
   const newTask = req.body;
 
-  // security: task must belong to logged-in user
-  if (newTask.accepted_user_email !== req.token_email) {
-    return res.status(403).json({ message: "Forbidden Access" });
-  }
-
   try {
-    const result = await tasksCollection.insertOne({
-      ...newTask,
-      created_at: new Date(),
-    });
+    const result = await tasksCollection.insertOne(newTask);
 
-    res.status(201).json({
+    res.send({
       success: true,
-      insertedId: result.insertedId,
+      message: "Task posted successfully",
+      ...result,
     });
-  } catch (error) {
-    console.error("postTask error:", error);
-    res.status(500).json({ success: false, message: "Task post failed" });
+  } catch {
+    res.status(500).send({
+      success: false,
+      message: "Task post failed",
+    });
   }
 };
 
 const getUserTasks = async (req, res) => {
-  const tasksCollection = getTasksCollection();
   const { email } = req.query;
-
-  if (email !== req.token_email) {
-    return res.status(403).json({ message: "Forbidden Access" });
-  }
-
   const pipeline = [
     {
       $match: {
@@ -46,8 +34,6 @@ const getUserTasks = async (req, res) => {
           $convert: {
             input: "$job_id",
             to: "objectId",
-            onError: null,
-            onNull: null,
           },
         },
       },
@@ -60,26 +46,28 @@ const getUserTasks = async (req, res) => {
         as: "job_details",
       },
     },
-    { $unwind: "$job_details" },
     {
-      $project: {
-        accepted_user_name: 1,
-        accepted_user_email: 1,
-        job_details: 1,
-      },
+      $unwind: "$job_details",
     },
   ];
 
   try {
-    const result = await tasksCollection.aggregate(pipeline).toArray();
+    const result = await tasksCollection
+      .aggregate(pipeline)
+      .project({
+        accepted_user_name: 1,
+        job_details: 1,
+        accepted_user_email: 1,
+      })
+      .toArray();
 
-    res.json({
+    res.send({
       success: true,
+      message: "Task jobs data retrieved successfully",
       user_tasks: result,
     });
-  } catch (error) {
-    console.error("getUserTasks error:", error);
-    res.status(500).json({
+  } catch {
+    res.status(500).send({
       success: false,
       message: "Task jobs data retrieved failed",
     });
@@ -87,33 +75,19 @@ const getUserTasks = async (req, res) => {
 };
 
 const deleteTaskById = async (req, res) => {
-  const tasksCollection = getTasksCollection();
   const { id } = req.params;
-
-  if (!ObjectId.isValid(id)) {
-    return res.status(400).json({ message: "Invalid task id" });
-  }
+  const query = { _id: new ObjectId(id) };
 
   try {
-    const task = await tasksCollection.findOne({ _id: new ObjectId(id) });
+    const result = await tasksCollection.deleteOne(query);
 
-    if (!task) {
-      return res.status(404).json({ message: "Task not found" });
-    }
-
-    if (task.accepted_user_email !== req.token_email) {
-      return res.status(403).json({ message: "Forbidden Access" });
-    }
-
-    await tasksCollection.deleteOne({ _id: new ObjectId(id) });
-
-    res.json({
+    res.send({
       success: true,
       message: "Task deleted successfully",
+      ...result,
     });
-  } catch (error) {
-    console.error("deleteTaskById error:", error);
-    res.status(500).json({
+  } catch {
+    res.status(500).send({
       success: false,
       message: "Task delete failed",
     });

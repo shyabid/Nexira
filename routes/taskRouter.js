@@ -3,17 +3,17 @@ const {
   postTask,
   getUserTasks,
   deleteTaskById,
-} = require("../controllers/taskController");
-
-const verifyTokenId = require("../middlewares/verifyTokenId");
-
+} = require("../controllers/taskController.js");
+const validateTokenId = require("../middlewares/validateTokenId.js");
+const verifyTokenId = require("../middlewares/verifyTokenId.js");
 const taskRouter = express.Router();
 
-// protect all task routes
-taskRouter.use(verifyTokenId);
+taskRouter.use(validateTokenId, verifyTokenId);
 
 taskRouter.post("/", postTask);
+
 taskRouter.get("/user", getUserTasks);
+
 taskRouter.delete("/:id", deleteTaskById);
 
 module.exports = taskRouter;

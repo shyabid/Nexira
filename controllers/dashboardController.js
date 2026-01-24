@@ -1,13 +1,18 @@
 const { jobsCollection } = require("../db.js");
 
 const getDashboardStats = async (req, res) => {
-  const userEmail = req.token_email;
-  const { my_jobs_only = "false" } = req.query;
-
-  const isMyJobsOnly = my_jobs_only === "true";
-
   try {
-    const matchStage = isMyJobsOnly ? { creator_email: userEmail } : {};
+    // 🔐 Safe token read (frontend break করবে না)
+    const userEmail = req.token_email || null;
+    const { my_jobs_only = "false" } = req.query;
+    const isMyJobsOnly = my_jobs_only === "true";
+
+    // 🧠 Safe match stage
+    const matchStage =
+      isMyJobsOnly && userEmail ? { creator_email: userEmail } : {};
+
+    // 📅 Date range (LAST 30 DAYS) — Date only (NO string)
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
     const stats = await jobsCollection
       .aggregate([
@@ -15,6 +20,7 @@ const getDashboardStats = async (req, res) => {
 
         {
           $facet: {
+            // ================= STATUS BREAKDOWN =================
             statusBreakdown: [
               {
                 $group: {
@@ -32,7 +38,7 @@ const getDashboardStats = async (req, res) => {
               {
                 $group: {
                   _id: null,
-                  items: { $push: { status: "$status", count: "$count" } },
+                  items: { $push: "$$ROOT" },
                 },
               },
               {
@@ -41,15 +47,14 @@ const getDashboardStats = async (req, res) => {
                     pending: {
                       $ifNull: [
                         {
-                          $arrayElemAt: [
-                            {
-                              $filter: {
-                                input: "$items",
-                                cond: { $eq: ["$$this.status", "pending"] },
+                          $first: {
+                            $filter: {
+                              input: "$items",
+                              cond: {
+                                $eq: ["$$this.status", "pending"],
                               },
                             },
-                            0,
-                          ],
+                          },
                         },
                         { count: 0 },
                       ],
@@ -57,15 +62,14 @@ const getDashboardStats = async (req, res) => {
                     accepted: {
                       $ifNull: [
                         {
-                          $arrayElemAt: [
-                            {
-                              $filter: {
-                                input: "$items",
-                                cond: { $eq: ["$$this.status", "accepted"] },
+                          $first: {
+                            $filter: {
+                              input: "$items",
+                              cond: {
+                                $eq: ["$$this.status", "accepted"],
                               },
                             },
-                            0,
-                          ],
+                          },
                         },
                         { count: 0 },
                       ],
@@ -73,34 +77,31 @@ const getDashboardStats = async (req, res) => {
                     completed: {
                       $ifNull: [
                         {
-                          $arrayElemAt: [
-                            {
-                              $filter: {
-                                input: "$items",
-                                cond: { $eq: ["$$this.status", "completed"] },
+                          $first: {
+                            $filter: {
+                              input: "$items",
+                              cond: {
+                                $eq: ["$$this.status", "completed"],
                               },
                             },
-                            0,
-                          ],
+                          },
                         },
                         { count: 0 },
                       ],
                     },
-                    total: { $sum: "$items.count" },
+                    total: {
+                      $sum: "$items.count",
+                    },
                   },
                 },
               },
-              { $project: { breakdown: 1 } },
             ],
 
+            // ================= JOBS OVER TIME =================
             jobsOverTime: [
               {
                 $match: {
-                  created_at: {
-                    $gte: new Date(
-                      Date.now() - 30 * 24 * 60 * 60 * 1000,
-                    ).toISOString(),
-                  },
+                  created_at: { $gte: thirtyDaysAgo },
                 },
               },
               {
@@ -108,7 +109,7 @@ const getDashboardStats = async (req, res) => {
                   _id: {
                     $dateToString: {
                       format: "%Y-%m-%d",
-                      date: { $toDate: "$created_at" },
+                      date: "$created_at",
                     },
                   },
                   count: { $sum: 1 },
@@ -124,6 +125,7 @@ const getDashboardStats = async (req, res) => {
               },
             ],
 
+            // ================= TOP CATEGORIES =================
             topCategories: [
               { $group: { _id: "$job_category", count: { $sum: 1 } } },
               { $sort: { count: -1 } },
@@ -137,6 +139,7 @@ const getDashboardStats = async (req, res) => {
               },
             ],
 
+            // ================= JOB TYPES =================
             jobTypes: [
               { $group: { _id: "$job_type", count: { $sum: 1 } } },
               {
@@ -148,8 +151,14 @@ const getDashboardStats = async (req, res) => {
               },
             ],
 
+            // ================= EXPERIENCE LEVELS =================
             experienceLevels: [
-              { $group: { _id: "$experience_level", count: { $sum: 1 } } },
+              {
+                $group: {
+                  _id: "$experience_level",
+                  count: { $sum: 1 },
+                },
+              },
               {
                 $project: {
                   level: "$_id",
@@ -172,15 +181,16 @@ const getDashboardStats = async (req, res) => {
       total: 0,
     };
 
-    const response = {
+    // ✅ RESPONSE SHAPE EXACTLY SAME (frontend safe)
+    res.status(200).send({
       success: true,
       message: "Dashboard statistics retrieved successfully",
       data: {
-        totalJobs: breakdown.total,
+        totalJobs: breakdown.total || 0,
         statusBreakdown: {
-          pending: breakdown.pending.count || 0,
-          accepted: breakdown.accepted.count || 0,
-          completed: breakdown.completed.count || 0,
+          pending: breakdown.pending?.count || 0,
+          accepted: breakdown.accepted?.count || 0,
+          completed: breakdown.completed?.count || 0,
         },
         jobsOverTime: result.jobsOverTime || [],
         topCategories: result.topCategories || [],
@@ -192,10 +202,11 @@ const getDashboardStats = async (req, res) => {
         periodDays: 30,
         generatedAt: new Date().toISOString(),
       },
-    };
+    });
+  } catch (error) {
+    // 🔴 CRITICAL: log error so Vercel won’t silently crash
+    console.error("Dashboard stats error:", error);
 
-    res.status(200).send(response);
-  } catch {
     res.status(500).send({
       success: false,
       message: "Failed to retrieve dashboard statistics",

@@ -1,0 +1,6 @@
+node_modules
+.env
+encode.js
+nexira-firebase-adminsdk.json
+.vercel.json
+.firebase

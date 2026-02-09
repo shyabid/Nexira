@@ -1,0 +1,128 @@
+@import url("https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&family=Raleway:ital,wght@0,100..900;1,100..900&display=swap");
+
+@import "tailwindcss";
+@plugin "daisyui";
+@plugin "daisyui/theme" {
+  name: "light";
+  default: true;
+  --color-primary: #086972;
+  --color-secondary: #01a9b4;
+}
+
+@plugin "daisyui/theme" {
+  name: "night";
+  default: false;
+  --color-primary: #00f7ff;
+  --color-secondary: #b0fffa;
+}
+
+@custom-variant dark (&:where([data-theme=night], [data-theme=night] *));
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  @apply font-['Raleway'] text-neutral dark:text-white;
+}
+
+strong {
+  @apply text-neutral dark:text-white;
+}
+
+section {
+  @apply w-full;
+}
+
+.nav_links {
+  @apply text-neutral dark:text-white font-semibold border-b-2 border-transparent bg-transparent px-1 py-0.5 rounded-none transition-all duration-300 inline-block w-fit;
+}
+
+.nav_links.active,
+.nav_links:hover {
+  @apply bg-linear-to-r from-primary/70 dark:from-primary  to-secondary/70 dark:to-secondary bg-clip-text text-transparent border-secondary/30 dark:border-primary/60;
+}
+
+.sidebar_links {
+  @apply flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-300 text-base-content/70 dark:text-gray-300 hover:bg-base-300 dark:hover:bg-gray-700/50 hover:text-base-content dark:hover:text-white;
+}
+
+.sidebar_links.active {
+  @apply bg-linear-to-r from-primary to-secondary text-white dark:text-neutral shadow-md;
+}
+
+.footer-link {
+  @apply hover:underline  cursor-pointer;
+}
+
+.footer-social-icon {
+  @apply inline-block mr-1.5;
+}
+
+.btn {
+  @apply font-['Raleway'];
+}
+
+.btn:disabled {
+  @apply pointer-events-auto cursor-not-allowed bg-[#D6D3E4] bg-none;
+}
+
+.input,
+.textarea,
+.select {
+  @apply w-full block bg-transparent dark:border-white/50;
+}
+
+.textarea {
+  @apply focus:textarea-primary;
+}
+
+.select {
+  @apply focus:select-primary bg-base-300!;
+}
+
+.input {
+  @apply focus:input-primary;
+}
+
+.label {
+  @apply font-semibold text-neutral dark:text-white text-base md:text-lg font-['Raleway'];
+}
+
+.primary_linear {
+  @apply bg-linear-to-r from-primary/60 dark:from-primary/80  to-secondary/60 dark:to-secondary/80;
+}
+
+.primary_linear_hover {
+  @apply transition-colors duration-300 hover:from-primary/70  dark:hover:from-primary hover:to-secondary/70 dark:hover:to-secondary;
+}
+
+.swiper-button-prev,
+.swiper-button-next {
+  @apply hidden! md:inline-block!;
+}
+
+.swiper-navigation-icon {
+  @apply text-secondary dark:text-primary;
+}
+
+.swiper-pagination-bullet {
+  @apply opacity-30! dark:opacity-40!;
+}
+
+.swiper-pagination-bullet-active {
+  @apply bg-secondary! dark:bg-primary! opacity-100!;
+}
+
+.swal2-modal {
+  @apply dark:bg-[#2D3250] dark:text-white;
+}
+
+.swal2-styled {
+  @apply bg-linear-to-r from-primary/60 dark:from-primary/80  to-secondary/60 dark:to-secondary/80;
+}
+
+.swal2-loader {
+  @apply border-primary border-x-0;
+}

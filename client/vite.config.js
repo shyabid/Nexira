@@ -4,4 +4,10 @@ import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   plugins: [tailwindcss(), react()],
+  server: {
+    port: 4034
+  },
+  preview: {
+    port: 4034
+  }
 });

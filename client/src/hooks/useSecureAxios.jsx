@@ -4,7 +4,7 @@ import { useMemo } from "react";
 const useSecureAxios = () => {
   const instance = useMemo(() => {
     const axiosInstance = axios.create({
-      baseURL: "https://nexira-server.shyabid.com",
+      baseURL: "https://nexira-server.shyabid.com/",
     });
 
     axiosInstance.interceptors.request.use((config) => {

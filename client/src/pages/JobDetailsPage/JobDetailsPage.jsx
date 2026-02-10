@@ -49,7 +49,7 @@ const JobDetailsPage = () => {
       try {
         const { data } = await publicAxios.get(`/jobs/${id}`);
         if (data.success) {
-          setJob(data.single_job);
+          setJob(data.job);
         }
       } catch {
         toast.error("Failed to load job details");

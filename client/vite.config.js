@@ -8,6 +8,8 @@ export default defineConfig({
     port: 4034
   },
   preview: {
-    port: 4034
+    port: 4034,
+    allowedHosts: ["nexira-client.shyabid.com"]
+  },
   }
-});
+);
